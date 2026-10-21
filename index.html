@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hope Speech · Psycholinguistic &amp; Emotional Analysis</title>
+<meta name="description" content="Exploring multidimensional aspects of hope speech computationally — psycholinguistic (LIWC), emotional (NRC) and sentiment (VADER) features for hope speech detection on PolyHope.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fbf9f6; --surface: #ffffff; --surface-2: #f3efe9; --text: #1c1917; --muted: #6b635b;
+    --border: #e8e2d9; --accent: #d97706; --accent-2: #db2777;
+    --nh: #94a3b8; --gh: #f59e0b; --rh: #10b981; --uh: #8b5cf6;
+    --shadow: 0 1px 2px rgba(28,25,23,.04), 0 8px 24px rgba(28,25,23,.06); --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12100e; --surface: #1c1916; --surface-2: #26221e; --text: #f2ede6; --muted: #a39a90;
+      --border: #332d27; --accent: #fbbf24; --accent-2: #f472b6; --nh: #64748b;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12100e; --surface: #1c1916; --surface-2: #26221e; --text: #f2ede6; --muted: #a39a90;
+    --border: #332d27; --accent: #fbbf24; --accent-2: #f472b6; --nh: #64748b;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; -webkit-font-smoothing: antialiased; transition: background .3s, color .3s; }
+  a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+  code, pre { font-family: "JetBrains Mono", monospace; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  nav { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); }
+  .brand:hover { text-decoration: none; }
+  .brand-dot { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: grid; place-items: center; color: #fff; font-size: 14px; }
+  .nav-links { display: flex; gap: 22px; align-items: center; }
+  .nav-links a { color: var(--muted); font-size: 14px; font-weight: 500; }
+  .nav-links a:hover { color: var(--text); text-decoration: none; }
+  .icon-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: grid; place-items: center; font-size: 16px; }
+
+  header.hero { padding: 88px 0 64px; position: relative; overflow: hidden; }
+  header.hero::before { content: ""; position: absolute; inset: -40% -10% auto; height: 540px; z-index: -1;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 20%, transparent), transparent),
+                radial-gradient(closest-side at 72% 40%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent); }
+  .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; color: var(--muted); font-weight: 500; }
+  .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  h1 { font-size: clamp(30px, 5vw, 54px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 800; margin: 20px 0 18px; max-width: 920px; }
+  h1 .grad { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 740px; }
+  .authors { margin-top: 18px; font-size: 14px; color: var(--muted); max-width: 820px; }
+  .authors strong { color: var(--text); font-weight: 600; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 12px; font-weight: 600; font-size: 15px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; transition: transform .15s, border-color .15s; font-family: inherit; }
+  .btn:hover { transform: translateY(-1px); border-color: var(--accent); text-decoration: none; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 56px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); }
+  .stat .num { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  section { padding: 72px 0; border-top: 1px solid var(--border); }
+  .eyebrow { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: var(--accent); }
+  h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -0.02em; margin: 8px 0 14px; font-weight: 750; }
+  .sub { color: var(--muted); max-width: 700px; margin-bottom: 36px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; box-shadow: var(--shadow); }
+  h3 { font-size: 18px; margin-bottom: 10px; font-weight: 650; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  .hope { border-top: 4px solid var(--c); }
+  .hope .n { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--muted); }
+  .hope p { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .hope blockquote { margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; font-size: 13px; font-style: italic; }
+
+  .bar { height: 16px; border-radius: 999px; background: var(--surface-2); overflow: hidden; display: flex; margin: 12px 0 10px; }
+  .bar > div { height: 100%; width: 0; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+  .legend { display: flex; gap: 18px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+
+  .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; counter-reset: step; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 16px; text-align: center; box-shadow: var(--shadow); }
+  .step::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; margin: 0 auto 10px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 700; font-size: 14px; }
+  .step b { display: block; font-size: 15px; margin-bottom: 4px; } .step span { font-size: 13px; color: var(--muted); }
+  .tool .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  .tool .v { font-weight: 700; font-size: 17px; margin: 4px 0 6px; }
+  .tool p { font-size: 14px; color: var(--muted); }
+
+  .seg { display: inline-flex; background: var(--surface-2); border-radius: 12px; padding: 4px; flex-wrap: wrap; gap: 2px; }
+  .seg button { border: 0; background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 9px; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .seg button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; align-items: center; }
+
+  .chart { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: end; height: 240px; padding: 10px 6px 0; border-bottom: 1px solid var(--border); }
+  .col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .col .b { width: 70%; max-width: 90px; border-radius: 10px 10px 4px 4px; background: var(--c); height: 0; transition: height .8s cubic-bezier(.2,.8,.2,1); }
+  .col .val { font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .xlabels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; text-align: center; font-size: 13px; color: var(--muted); font-weight: 600; padding-top: 10px; }
+  .insight { margin-top: 18px; font-size: 14px; color: var(--muted); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+  td.num { font-family: "JetBrains Mono", monospace; }
+  tr.best td { background: color-mix(in srgb, var(--accent) 9%, transparent); font-weight: 700; }
+  tr.ours td:first-child { font-weight: 700; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; margin-left: 6px; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 14px; }
+
+  .finding { border-left: 4px solid var(--c); }
+  .finding ul { list-style: none; } .finding li { font-size: 14px; color: var(--muted); padding: 5px 0 5px 18px; position: relative; }
+  .finding li::before { content: "•"; position: absolute; left: 0; color: var(--c); font-weight: 800; }
+
+  .files { list-style: none; }
+  .file { display: flex; align-items: center; gap: 14px; padding: 14px 6px; border-bottom: 1px solid var(--border); }
+  .file:last-child { border-bottom: 0; }
+  .file .ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); font-size: 17px; flex-shrink: 0; }
+  .file .meta { flex: 1; min-width: 0; } .file .meta a { font-weight: 600; color: var(--text); word-break: break-all; }
+  .file .meta small { display: block; color: var(--muted); font-size: 12px; }
+  .file-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; flex-wrap: wrap; }
+  .status { font-size: 12px; color: var(--muted); }
+
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; overflow-x: auto; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .copy-wrap { position: relative; } .copy-btn { position: absolute; top: 12px; right: 12px; font-size: 12px; padding: 6px 12px; }
+  footer { padding: 40px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s, transform .7s; } .reveal.in { opacity: 1; transform: none; }
+
+  @media (max-width: 860px) {
+    .stats, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .pipeline { grid-template-columns: 1fr 1fr; }
+    .nav-links a { display: none; }
+    .chart, .xlabels { gap: 10px; }
+  }
+  @media (max-width: 480px) {
+    .wrap { padding: 0 16px; }
+    .pipeline, .grid-4 { grid-template-columns: 1fr; }
+    .chart { height: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a href="#" class="brand"><span class="brand-dot">✦</span> LLM-Emotions</a>
+    <div class="nav-links">
+      <a href="#hope">Hope types</a>
+      <a href="#method">Method</a>
+      <a href="#emotions">Emotions</a>
+      <a href="#results">Results</a>
+      <a href="#files">Code</a>
+      <a href="#cite">Cite</a>
+      <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">◐</button>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge"><span class="dot"></span> Preprint · submitted to Scientific Reports</span>
+    <h1>Exploring Multidimensional Aspects of <span class="grad">Hope Speech</span> Computationally</h1>
+    <p class="lede">A psycholinguistic and emotional perspective: we extract LIWC, NRC-emotion and VADER-sentiment features from tweets, show how different types of hope carry distinct emotional signatures, and use those features to classify hope with gradient-boosting models.</p>
+    <p class="authors"><strong>Muhammad Arif</strong>, Moein Shahiki Tash, Ainaz Jamshidi, Iqra Ameer, Fida Ullah, Jugal Kalita, Alexander Gelbukh, Fazlourrahman Balouchzahi</p>
+    <div class="cta">
+      <a class="btn primary" href="#results">📊 See results</a>
+      <a class="btn" href="https://github.com/marif561/LLM-Emotions" target="_blank" rel="noopener">★ View on GitHub</a>
+      <a class="btn" href="#cite">❝ Cite</a>
+    </div>
+    <div class="stats reveal">
+      <div class="stat"><div class="num" data-count="8256">0</div><div class="lbl">Annotated tweets (PolyHope)</div></div>
+      <div class="stat"><div class="num" data-count="4">0</div><div class="lbl">Hope categories</div></div>
+      <div class="stat"><div class="num" data-count="0.8161" data-dec="4">0</div><div class="lbl">Best binary macro-F1 (LightGBM)</div></div>
+      <div class="stat"><div class="num" data-count="4" data-prefix="+" data-suffix=" pts">0</div><div class="lbl">Multiclass macro-F1 gain vs. TF-IDF ML baseline</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="hope">
+  <div class="wrap">
+    <div class="eyebrow">The task</div>
+    <h2>Not all hope is the same</h2>
+    <p class="sub">Following the PolyHope definition, hope is "an expectation, wish, or desire for something to happen or to be true" — and it can come wrapped in anger or sadness as easily as in joy. Tweets are first classified as Hope vs. Not Hope, then hopeful tweets are split into three fine-grained types.</p>
+    <div class="grid-4 reveal">
+      <div class="card hope" style="--c:var(--nh)"><div class="n">4,081 tweets</div><h3>Not Hope</h3><p>No expressed hope, desire or expectation for the future.</p><blockquote>"It's also common sense. You don't need to pray or be religious for that."</blockquote></div>
+      <div class="card hope" style="--c:var(--gh)"><div class="n">2,335 tweets</div><h3>Generalized Hope</h3><p>Broad, overarching optimism not tied to a specific event or outcome.</p><blockquote>"I hope everyone injured makes a speedy recovery…"</blockquote></div>
+      <div class="card hope" style="--c:var(--rh)"><div class="n">982 tweets</div><h3>Realistic Hope</h3><p>Anticipating outcomes that are sensible, significant and achievable.</p><blockquote>"You have been working all your life — definitely you can buy a car soon."</blockquote></div>
+      <div class="card hope" style="--c:var(--uh)"><div class="n">858 tweets</div><h3>Unrealistic Hope</h3><p>Wishes that defy rational expectation, often driven by anger, sadness or despair.</p><blockquote>"I wish I had a tail as big as a kite, just like Libra!"</blockquote></div>
+    </div>
+    <div class="card reveal" style="margin-top:20px">
+      <h3>Class distribution</h3>
+      <div class="bar"><div data-w="49.43" style="background:var(--nh)"></div><div data-w="28.28" style="background:var(--gh)"></div><div data-w="11.89" style="background:var(--rh)"></div><div data-w="10.40" style="background:var(--uh)"></div></div>
+      <div class="legend"><span><i style="background:var(--nh)"></i>Not Hope 49.4%</span><span><i style="background:var(--gh)"></i>Generalized 28.3%</span><span><i style="background:var(--rh)"></i>Realistic 11.9%</span><span><i style="background:var(--uh)"></i>Unrealistic 10.4%</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="method">
+  <div class="wrap">
+    <div class="eyebrow">Methodology</div>
+    <h2>From tweets to emotional fingerprints</h2>
+    <p class="sub">Two phases: extract psycholinguistic, emotional and sentiment features and analyse how they relate to each hope type; then feed them to gradient-boosting classifiers, alone and combined with n-grams.</p>
+    <div class="pipeline reveal">
+      <div class="step"><b>Preprocess</b><span>Emoji → text, expand abbreviations, drop punctuation &amp; stopwords</span></div>
+      <div class="step"><b>Extract</b><span>LIWC + NRC emotions + VADER sentiment, plus char/word n-grams</span></div>
+      <div class="step"><b>Select</b><span>SelectFromModel (random forest) on n-grams</span></div>
+      <div class="step"><b>Tune</b><span>Bayesian optimization of hyperparameters</span></div>
+      <div class="step"><b>Evaluate</b><span>5-fold CV · weighted &amp; macro P/R/F1</span></div>
+    </div>
+    <div class="grid-3 reveal" style="margin-top:20px">
+      <div class="card tool"><div class="k">Psycholinguistic</div><div class="v">LIWC-22</div><p>Function words, drives, cognition, affect, social processes, motives, perception and more.</p></div>
+      <div class="card tool"><div class="k">Emotions</div><div class="v">NRC Emotion Lexicon</div><p>Anger, anticipation, disgust, fear, joy, sadness, surprise and trust.</p></div>
+      <div class="card tool"><div class="k">Sentiment</div><div class="v">VADER</div><p>Positive, negative and neutral scores from a polarity- and intensity-weighted lexicon.</p></div>
+    </div>
+    <p class="note">Classifiers: <strong>LightGBM</strong>, <strong>CatBoost</strong> and <strong>XGBoost</strong>, each run with three feature sets — n-grams only; LIWC + emotions + sentiments; and all features combined — under default and tuned hyperparameters.</p>
+  </div>
+</section>
+
+<section id="emotions">
+  <div class="wrap">
+    <div class="eyebrow">Analysis</div>
+    <h2>How each type of hope feels</h2>
+    <p class="sub">Average NRC emotion and VADER sentiment scores per hope type. Pick a dimension to compare.</p>
+    <div class="card reveal">
+      <div class="controls">
+        <div class="seg" id="dimGroup"><button data-g="emo" class="active">Emotions</button><button data-g="sent">Sentiment</button></div>
+        <div class="seg" id="dimSel"></div>
+      </div>
+      <div class="chart" id="chart"></div>
+      <div class="xlabels"><span>Not Hope</span><span>Generalized</span><span>Realistic</span><span>Unrealistic</span></div>
+      <p class="insight" id="insight"></p>
+    </div>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <div class="eyebrow">Results</div>
+    <h2>Emotional features pay off</h2>
+    <p class="sub">Adding psycholinguistic, emotional and sentiment features beats n-grams alone for every model, and LightGBM with all features combined is best in both tasks. Averages over 5-fold cross-validation.</p>
+    <div class="card reveal">
+      <div class="controls">
+        <div class="seg" id="taskSel"><button data-t="binary" class="active">Binary (Hope / Not Hope)</button><button data-t="multi">Multiclass (4 types)</button></div>
+        <div class="seg" id="paramSel"><button data-p="tuned" class="active">Tuned</button><button data-p="default">Default</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model</th><th>Features</th><th>Weighted F1</th><th>Macro P</th><th>Macro R</th><th>Macro F1</th><th>Accuracy</th></tr></thead>
+          <tbody id="resBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card reveal" style="margin-top:20px">
+      <h3>Comparison with PolyHope baselines</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model</th><th>Approach</th><th>Weighted F1</th><th>Macro F1</th></tr></thead>
+          <tbody>
+            <tr><td colspan="4" style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Binary</td></tr>
+            <tr><td>LR (Balouchzahi et al., 2023)</td><td>Machine learning</td><td class="num">0.7979</td><td class="num">0.7978</td></tr>
+            <tr class="ours"><td>CatBoost (proposed features) <span class="tag">OURS</span></td><td>Machine learning</td><td class="num">0.8155</td><td class="num">0.8154</td></tr>
+            <tr><td>BiLSTM / CNN + GloVe</td><td>Deep learning</td><td class="num">0.8230</td><td class="num">0.8229</td></tr>
+            <tr><td>BERT, RoBERTa, XLNet</td><td>Transformers</td><td class="num">0.8523</td><td class="num">0.8522</td></tr>
+            <tr><td colspan="4" style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Multiclass</td></tr>
+            <tr><td>CatBoost (Balouchzahi et al., 2023)</td><td>Machine learning</td><td class="num">0.6416</td><td class="num">0.5350</td></tr>
+            <tr class="ours"><td>LightGBM (proposed features) <span class="tag">OURS</span></td><td>Machine learning</td><td class="num">0.6793</td><td class="num">0.5800</td></tr>
+            <tr><td>CNN + GloVe</td><td>Deep learning</td><td class="num">0.6962</td><td class="num">0.6135</td></tr>
+            <tr><td>BERT</td><td>Transformers</td><td class="num">0.7701</td><td class="num">0.7193</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Lightweight feature-based models beat the traditional TF-IDF baseline and approach deep-learning results at a fraction of the compute; transformers remain ahead.</p>
+    </div>
+  </div>
+</section>
+
+<section id="findings">
+  <div class="wrap">
+    <div class="eyebrow">Key findings</div>
+    <h2>Three signatures of hope</h2>
+    <div class="grid-3 reveal">
+      <div class="card finding" style="--c:var(--gh)"><h3>Generalized Hope</h3><ul><li>Highest joy, anticipation, trust and positive sentiment</li><li>Most affect-laden language</li><li>Less focused on practical, everyday matters</li></ul></div>
+      <div class="card finding" style="--c:var(--rh)"><h3>Realistic Hope</h3><ul><li>Grounded in what is feasible; highest "drives" score</li><li>Least conversational — a reserved, pragmatic tone</li><li>Tied to work, home, school and cultural/political topics</li></ul></div>
+      <div class="card finding" style="--c:var(--uh)"><h3>Unrealistic Hope</h3><ul><li>Highest anger, sadness and negative sentiment</li><li>Fewer words but more cognitive engagement</li><li>More frequent in discussions of health</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="files">
+  <div class="wrap">
+    <div class="eyebrow">Code &amp; Analysis</div>
+    <h2>Repository contents</h2>
+    <p class="sub">This list loads live from GitHub, so scripts, notebooks and analysis files appear here as soon as they're pushed.</p>
+    <div class="card">
+      <div class="file-head"><h3 style="margin:0">Files</h3><span class="status" id="fileStatus">Loading…</span></div>
+      <ul class="files" id="fileList"></ul>
+    </div>
+  </div>
+</section>
+
+<section id="cite">
+  <div class="wrap">
+    <div class="eyebrow">Citation</div>
+    <h2>Cite this work</h2>
+    <p class="sub">If this work helps your research, please cite:</p>
+    <div class="copy-wrap">
+      <button class="btn copy-btn" id="copyBtn">Copy</button>
+<pre id="bibtex">@misc{arif_hope_speech,
+  title  = {Exploring Multidimensional Aspects of Hope Speech Computationally:
+            A Psycholinguistic and Emotional Perspective},
+  author = {Arif, Muhammad and Shahiki Tash, Moein and Jamshidi, Ainaz and
+            Ameer, Iqra and Ullah, Fida and Kalita, Jugal and
+            Gelbukh, Alexander and Balouchzahi, Fazlourrahman},
+  note   = {Preprint submitted to Scientific Reports}
+}</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="year"></span> Muhammad Arif et al.</span>
+    <a href="https://github.com/marif561/LLM-Emotions" target="_blank" rel="noopener">github.com/marif561/LLM-Emotions</a>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const OWNER = "marif561", REPO = "LLM-Emotions", BRANCH = "main";
+  const blob = p => `https://github.com/${OWNER}/${REPO}/blob/${BRANCH}/${encodeURIComponent(p).replace(/%2F/g, "/")}`;
+  document.getElementById("year").textContent = new Date().getFullYear();
+
+  /* Theme */
+  const root = document.documentElement;
+  try { const s = localStorage.getItem("theme"); if (s) root.dataset.theme = s; } catch {}
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch {}
+  });
+
+  /* Count-up + reveal */
+  const countUp = el => {
+    const end = parseFloat(el.dataset.count), dec = +(el.dataset.dec || 0), pre = el.dataset.prefix || "", suf = el.dataset.suffix || "";
+    const t0 = performance.now();
+    const tick = t => { const p = Math.min((t - t0) / 1400, 1), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = pre + (end * e).toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
+      if (p < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  };
+  const io = new IntersectionObserver(es => es.forEach(en => {
+    if (!en.isIntersecting) return;
+    en.target.classList.add("in");
+    en.target.querySelectorAll("[data-count]").forEach(countUp);
+    en.target.querySelectorAll(".bar > div").forEach(b => b.style.width = b.dataset.w + "%");
+    io.unobserve(en.target);
+  }), { threshold: 0.15 });
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+  /* Emotion explorer (Tables 8 & 9) — order: NH, GH, RH, UH */
+  const dims = {
+    emo: { Anger:[0.55,0.35,0.43,0.56], Anticipation:[1.21,1.60,1.32,0.90], Disgust:[0.40,0.25,0.32,0.40], Fear:[0.86,0.59,0.65,0.71],
+           Joy:[0.89,1.61,1.17,0.84], Sadness:[0.57,0.43,0.42,0.61], Surprise:[0.63,0.95,0.72,0.49], Trust:[1.46,1.61,1.43,0.87] },
+    sent: { Positive:[0.21,0.37,0.31,0.28], Negative:[0.13,0.08,0.08,0.14], Neutral:[0.65,0.53,0.59,0.56] }
+  };
+  const names = ["Not Hope","Generalized Hope","Realistic Hope","Unrealistic Hope"];
+  const colors = ["var(--nh)","var(--gh)","var(--rh)","var(--uh)"];
+  const chart = document.getElementById("chart"), sel = document.getElementById("dimSel"), insight = document.getElementById("insight");
+  chart.innerHTML = colors.map(c => `<div class="col"><div class="val">–</div><div class="b" style="--c:${c}"></div></div>`).join("");
+  let group = "emo";
+  const draw = d => {
+    const v = dims[group][d], max = Math.max(...Object.values(dims[group]).flat());
+    chart.querySelectorAll(".col").forEach((col, i) => {
+      col.querySelector(".val").textContent = v[i].toFixed(2);
+      col.querySelector(".b").style.height = (v[i] / max * 85) + "%";
+    });
+    const hi = v.indexOf(Math.max(...v)), lo = v.indexOf(Math.min(...v));
+    insight.innerHTML = `<strong>${d}</strong> is highest in <strong>${names[hi]}</strong> and lowest in <strong>${names[lo]}</strong>.`;
+    sel.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.d === d));
+  };
+  const buildSel = () => {
+    sel.innerHTML = Object.keys(dims[group]).map(d => `<button data-d="${d}">${d}</button>`).join("");
+    sel.querySelectorAll("button").forEach(b => b.addEventListener("click", () => draw(b.dataset.d)));
+    draw(group === "emo" ? "Joy" : "Positive");
+  };
+  document.querySelectorAll("#dimGroup button").forEach(b => b.addEventListener("click", () => {
+    group = b.dataset.g;
+    document.querySelectorAll("#dimGroup button").forEach(x => x.classList.toggle("active", x === b));
+    buildSel();
+  }));
+  buildSel();
+
+  /* Results (Tables 13–16): [weighted F1, macro P, macro R, macro F1, accuracy] */
+  const FS = ["N-grams", "LIWC + Emotions + Sentiments", "All features"];
+  const R = {
+    binary: {
+      default: { LightGBM: [[.7923,.7924,.7921,.7922,.7923],[.7953,.7954,.7952,.7952,.7953],[.8118,.8121,.8117,.8117,.8118]],
+                 CatBoost: [[.7953,.7959,.7955,.7953,.7953],[.7986,.7989,.7986,.7986,.7987],[.8118,.8121,.8117,.8117,.8118]],
+                 XGBoost:  [[.7823,.7824,.7821,.7821,.7823],[.7857,.7859,.7857,.7857,.7857],[.8087,.8087,.8085,.8085,.8087]] },
+      tuned:   { LightGBM: [[.7974,.7975,.7973,.7974,.7974],[.8027,.8029,.8027,.8027,.8028],[.8162,.8163,.8161,.8161,.8162]],
+                 CatBoost: [[.8003,.8009,.8005,.8003,.8003],[.8155,.8156,.8154,.8154,.8155],[.8015,.8018,.8015,.8014,.8015]],
+                 XGBoost:  [[.7870,.7871,.7870,.7870,.7870],[.7923,.7924,.7923,.7923,.7923],[.8069,.8069,.8068,.8068,.8069]] }
+    },
+    multi: {
+      default: { LightGBM: [[.6248,.5515,.5013,.5168,.6396],[.6379,.5768,.5112,.5307,.6547],[.6593,.5981,.5413,.5600,.6723]],
+                 CatBoost: [[.6227,.5611,.4961,.5150,.6420],[.6315,.5896,.4997,.5214,.6524],[.6386,.6065,.5095,.5339,.6589]],
+                 XGBoost:  [[.6187,.5382,.4968,.5108,.6326],[.6293,.5626,.5034,.5212,.6450],[.6534,.5878,.5372,.5545,.6654]] },
+      tuned:   { LightGBM: [[.6448,.5715,.5213,.5368,.6596],[.6579,.5968,.5312,.5507,.6747],[.6793,.6181,.5613,.5800,.6923]],
+                 CatBoost: [[.6427,.5811,.5161,.5350,.6620],[.6515,.6096,.5197,.5414,.6724],[.6586,.6265,.5295,.5539,.6789]],
+                 XGBoost:  [[.6387,.5582,.5168,.5308,.6526],[.6493,.5826,.5234,.5412,.6650],[.6734,.6078,.5572,.5745,.6854]] }
+    }
+  };
+  let task = "binary", params = "tuned";
+  const body = document.getElementById("resBody");
+  const renderRes = () => {
+    const d = R[task][params];
+    let best = -1;
+    Object.values(d).forEach(rows => rows.forEach(r => best = Math.max(best, r[3])));
+    body.innerHTML = Object.entries(d).map(([m, rows]) => rows.map((r, i) => {
+      const isBest = r[3] === best;
+      return `<tr class="${isBest ? "best" : ""}"><td>${i === 0 ? `<strong>${m}</strong>` : ""}</td><td>${FS[i]}${isBest ? '<span class="tag">BEST</span>' : ""}</td>${r.map(x => `<td class="num">${x.toFixed(4)}</td>`).join("")}</tr>`;
+    }).join("")).join("");
+  };
+  const bindSeg = (id, attr, set) => document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener("click", () => {
+    set(b.dataset[attr]);
+    document.querySelectorAll(`#${id} button`).forEach(x => x.classList.toggle("active", x === b));
+    renderRes();
+  }));
+  bindSeg("taskSel", "t", v => task = v);
+  bindSeg("paramSel", "p", v => params = v);
+  renderRes();
+
+  /* Copy citation */
+  document.getElementById("copyBtn").addEventListener("click", async e => {
+    try { await navigator.clipboard.writeText(document.getElementById("bibtex").textContent); e.target.textContent = "Copied ✓"; }
+    catch { e.target.textContent = "Select & copy"; }
+    setTimeout(() => e.target.textContent = "Copy", 1800);
+  });
+
+  /* Live file list */
+  const icons = { py:"🐍", ipynb:"📓", pdf:"📄", md:"📝", csv:"📊", json:"🧾", txt:"📃", png:"🖼️", jpg:"🖼️", html:"🌐", cff:"❝", sh:"⚙️", gitignore:"🙈" };
+  const fmt = b => b > 1048576 ? (b/1048576).toFixed(1)+" MB" : b > 1024 ? (b/1024).toFixed(1)+" KB" : b+" B";
+  const fallback = [{ name:"README.md", path:"README.md", type:"file", size:0 },{ name:"index.html", path:"index.html", type:"file", size:0 },{ name:"CITATION.cff", path:"CITATION.cff", type:"file", size:0 }];
+  const list = document.getElementById("fileList"), status = document.getElementById("fileStatus");
+  const show = (items, live) => {
+    items.sort((a, b) => a.type === b.type ? a.name.localeCompare(b.name) : a.type === "dir" ? -1 : 1);
+    list.innerHTML = items.map(f => {
+      const ext = f.name.split(".").pop().toLowerCase();
+      const meta = f.type === "dir" ? "Folder" : (f.size ? `${ext.toUpperCase()} · ${fmt(f.size)}` : ext.toUpperCase());
+      return `<li class="file"><span class="ico">${f.type === "dir" ? "📁" : icons[ext] || "📄"}</span><div class="meta"><a href="${f.html_url || blob(f.path)}" target="_blank" rel="noopener">${f.name}</a><small>${meta}</small></div></li>`;
+    }).join("");
+    status.textContent = live ? `${items.length} items · live from GitHub` : `${items.length} items · offline snapshot`;
+  };
+  fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents`)
+    .then(r => r.ok ? r.json() : Promise.reject()).then(i => show(i, true)).catch(() => show(fallback, false));
+})();
+</script>
+</body>
+</html>

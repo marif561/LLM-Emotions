@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "Exploring Multidimensional Aspects of Hope Speech Computationally: A Psycholinguistic and Emotional Perspective"
+type: software
+authors:
+  - family-names: Arif
+    given-names: Muhammad
+  - family-names: Shahiki Tash
+    given-names: Moein
+  - family-names: Jamshidi
+    given-names: Ainaz
+  - family-names: Ameer
+    given-names: Iqra
+  - family-names: Ullah
+    given-names: Fida
+  - family-names: Kalita
+    given-names: Jugal
+  - family-names: Gelbukh
+    given-names: Alexander
+  - family-names: Balouchzahi
+    given-names: Fazlourrahman
+repository-code: "https://github.com/marif561/LLM-Emotions"
+url: "https://marif561.github.io/LLM-Emotions/"
+keywords:
+  - hope speech detection
+  - psycholinguistics
+  - emotions
+  - sentiment analysis
+  - LIWC
+  - NRC Emotion Lexicon
+  - VADER
+  - natural language processing
